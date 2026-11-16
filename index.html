@@ -465,6 +465,7 @@
       .nav-links a { display: block; padding: 16px 24px; font-size: 1rem; }
 
       .project-body { padding: 24px; }
+      .veil { opacity: 0.3; }           /* let the waves show more on small screens */
       .contact-box { padding: 32px 22px; }
     }
   </style>
@@ -523,9 +524,9 @@
 
         <!-- Live readout of the background field under the cursor -->
         <div class="readout" aria-hidden="true">
-          <span>|E|² at cursor</span><span class="meter"><i id="meter-fill"></i></span>
+          <span>|E|² at source</span><span class="meter"><i id="meter-fill"></i></span>
           <span>photons</span><b id="photon-count">0</b>
-          <span class="hint" id="hint">move the cursor or click to emit a pulse</span>
+          <span class="hint" id="hint">move the mouse to steer the light, click to emit a pulse</span>
         </div>
       </div>
     </section>
@@ -729,21 +730,26 @@
     /* =========================================================
        C. FADE-IN ON SCROLL
        ========================================================= */
-    const observer = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-          observer.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.15 });
-    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+    const revealEls = document.querySelectorAll('.reveal');
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.05, rootMargin: '0px 0px -40px 0px' });
+      revealEls.forEach(el => observer.observe(el));
+    } else {
+      revealEls.forEach(el => el.classList.add('visible')); // old browsers: just show everything
+    }
 
     document.getElementById('year').textContent = new Date().getFullYear();
 
     // On touch screens there is no cursor, so adjust the hint text
     if (window.matchMedia('(pointer: coarse)').matches) {
-      document.getElementById('hint').textContent = 'tap anywhere to emit a pulse';
+      document.getElementById('hint').textContent = 'tap anywhere to emit a pulse of photons';
     }
 
     /* =========================================================
@@ -751,8 +757,10 @@
        - Several sine waves travel across the screen.
        - Line color shows local field intensity |E|²
          (blue = low, cyan = medium, white = peak).
-       - The cursor boosts the field around it.
-       - A click sends a circular pulse and a burst of photons.
+       - A "light source" boosts the field around it. It follows the
+         mouse; when there is no mouse (phones) or the mouse is idle,
+         it drifts across the screen by itself and emits soft pulses.
+       - A click or tap sends a circular pulse and a burst of photons.
        - Photons ride along the waves.
        ========================================================= */
     const canvas = document.getElementById('field');
@@ -765,7 +773,10 @@
     const photons = [];              // photons riding on waves
     const freePhotons = [];          // photons from a click burst
     const pulses = [];               // expanding rings from clicks
-    const pointer = { x: -9999, y: -9999 };
+    const pointer = { x: -9999, y: -9999, lastMove: -99 };  // real mouse
+    const src = { x: -9999, y: -9999 };                       // light source used by the field
+    let lastAutoPulse = 0;
+    let small = false;               // true on phone-sized screens
 
     const STEP = 6;                  // horizontal resolution of each wave (px)
     const BUCKETS = 10;              // intensity levels used for coloring
@@ -790,21 +801,22 @@
     // Map intensity (0..1) to an rgba() string
     function intensityColor(I, alphaScale = 1) {
       const c = I < 0.5 ? mix(colors.low, colors.mid, I * 2) : mix(colors.mid, colors.high, (I - 0.5) * 2);
-      const a = (0.12 + 0.75 * I) * colors.alpha * alphaScale;
+      const base = small ? 0.22 : 0.14;                           // stronger base on phones
+      const a = (base + 0.75 * I) * colors.alpha * alphaScale;
       return `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)})`;
     }
 
     // Create the waves for the current screen size
     function buildWaves() {
       waves.length = 0;
-      const count = W < 700 ? 4 : 6;
+      const count = small ? 6 : 6;
       for (let i = 0; i < count; i++) {
         const lambda = 160 + Math.random() * 260;                 // wavelength in px
         waves.push({
           y: H * (0.12 + 0.76 * (i / (count - 1))),               // baseline height
           k: (2 * Math.PI) / lambda,                              // wave number
           omega: 0.7 + Math.random() * 0.9,                       // angular frequency
-          amp: 9 + Math.random() * 14,                            // base amplitude
+          amp: (small ? 12 : 9) + Math.random() * 14,             // base amplitude
           phase: Math.random() * Math.PI * 2
         });
       }
@@ -812,20 +824,41 @@
 
     function resize() {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const oldW = W, oldH = H;
       W = window.innerWidth;
       H = window.innerHeight;
+      small = W < 700;
       canvas.width = W * dpr;
       canvas.height = H * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      buildWaves();
+      // On phones the address bar changes the height while scrolling:
+      // keep the same waves and just stretch them instead of rebuilding.
+      if (W !== oldW || !waves.length) buildWaves();
+      else waves.forEach(w => { w.y = w.y * (H / oldH); });
       if (reduceMotion) drawFrame(0);
+    }
+
+    // Move the light source: follow the mouse, or drift on its own
+    function updateSource(t) {
+      const mouseActive = t - pointer.lastMove < 2.5;
+      if (mouseActive) {
+        src.x = pointer.x; src.y = pointer.y;
+      } else {
+        src.x = W * (0.5 + 0.38 * Math.sin(t * 0.23));
+        src.y = H * (0.5 + 0.34 * Math.sin(t * 0.31 + 1.2));
+        if (t - lastAutoPulse > 4.5) {                            // soft pulse every few seconds
+          lastAutoPulse = t;
+          pulses.push({ x: src.x, y: src.y, t0: t });
+        }
+      }
     }
 
     // How much the field is amplified at point (x, y): cursor + click pulses
     function gainAt(x, y, t) {
       let g = 1;
-      const dx = x - pointer.x, dy = y - pointer.y;
-      g += 1.8 * Math.exp(-(dx * dx + dy * dy) / (2 * 150 * 150));
+      const dx = x - src.x, dy = y - src.y;
+      const sigma = small ? 120 : 150;
+      g += 1.8 * Math.exp(-(dx * dx + dy * dy) / (2 * sigma * sigma));
       for (const p of pulses) {
         const r = (t - p.t0) * 420;                               // ring radius grows at 420 px/s
         const d = Math.hypot(x - p.x, y - p.y) - r;
@@ -865,6 +898,7 @@
     function drawFrame(t) {
       const dt = Math.min(0.05, t - lastT);
       lastT = t;
+      if (!reduceMotion) updateSource(t);
       ctx.clearRect(0, 0, W, H);
 
       // 1) Waves, grouped into intensity buckets so each color is one path
@@ -927,16 +961,16 @@
       updateReadout(t);
     }
 
-    // Hero readout: field intensity under the cursor and photon count
+    // Hero readout: field intensity at the light source and photon count
     const meterFill = document.getElementById('meter-fill');
     const photonCount = document.getElementById('photon-count');
     function updateReadout(t) {
       let best = 0;
       for (const w of waves) {
-        const d = Math.abs(pointer.y - w.y);
-        if (d < 60) {
-          const E = fieldAt(w, pointer.x, t);
-          best = Math.max(best, Math.min(1, E * E * gainAt(pointer.x, w.y, t) / 2.8) * (1 - d / 60));
+        const d = Math.abs(src.y - w.y);
+        if (d < 80) {
+          const E = fieldAt(w, src.x, t);
+          best = Math.max(best, Math.min(1, E * E * gainAt(src.x, w.y, t) / 2.8) * (1 - d / 80));
         }
       }
       meterFill.style.width = (best * 100).toFixed(0) + '%';
@@ -950,8 +984,11 @@
     }
 
     // Pointer events (listen on window: the canvas ignores clicks)
-    window.addEventListener('pointermove', e => { pointer.x = e.clientX; pointer.y = e.clientY; });
-    window.addEventListener('pointerleave', () => { pointer.x = pointer.y = -9999; });
+    window.addEventListener('pointermove', e => {
+      if (e.pointerType !== 'mouse') return;                      // touch: the source drifts by itself
+      pointer.x = e.clientX; pointer.y = e.clientY; pointer.lastMove = lastT;
+    });
+    document.addEventListener('mouseleave', () => { pointer.lastMove = -99; });
     window.addEventListener('pointerdown', e => {
       // do not fire on links and buttons
       if (!reduceMotion && !e.target.closest('a, button, video')) burst(e.clientX, e.clientY, lastT);
