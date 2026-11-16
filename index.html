@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <!-- =========================================================
+       1. HEAD: page metadata, fonts and all CSS
+       ========================================================= -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hananya Rem | Electrical Engineering</title>
+  <meta name="description" content="Hananya Rem, third-year Electrical Engineering student at the Technion. Projects, interests and contact.">
+
+  <!-- Fonts from Google Fonts: Inter for text, JetBrains Mono for "lab" labels -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    /* =======================================================
+       2. THEME VARIABLES
+       Change colors here: every color on the site comes from
+       these variables. [data-theme="light"] overrides them
+       when the light mode is active.
+       ======================================================= */
+    :root {
+      /* Backgrounds */
+      --bg: #070d1f;              /* page background (deep navy) */
+      --bg-elev: #0c1530;         /* cards and panels */
+      --bg-glass: rgba(10, 18, 42, 0.72); /* header with blur */
+
+      /* Text */
+      --text: #e8edf7;            /* main text */
+      --text-muted: #9aa8c7;      /* secondary text */
+
+      /* Accents */
+      --accent: #5b8cff;          /* main blue */
+      --accent-2: #7de3ff;        /* cyan (high intensity) */
+      --accent-3: #b49bff;        /* soft violet */
+      --accent-warm: #ffc27a;     /* small warm touch */
+
+      /* Lines and shadows */
+      --border: rgba(150, 175, 230, 0.16);
+      --shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+
+      /* Canvas background animation (read by JavaScript) */
+      --wave-low: 91, 140, 255;   /* low field intensity (RGB) */
+      --wave-mid: 125, 227, 255;  /* medium intensity */
+      --wave-high: 235, 245, 255; /* peak intensity */
+      --wave-alpha: 1;            /* overall strength of the animation */
+
+      /* Fonts */
+      --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, "Consolas", monospace;
+
+      /* Layout */
+      --max-width: 1080px;
+      --radius: 14px;
+    }
+
+    [data-theme="light"] {
+      --bg: #f4f6fb;
+      --bg-elev: #ffffff;
+      --bg-glass: rgba(244, 246, 251, 0.8);
+      --text: #0d1733;
+      --text-muted: #4b5a7c;
+      --accent: #2a5bd7;
+      --accent-2: #0b8fb3;
+      --accent-3: #6b4fd1;
+      --accent-warm: #b86a12;
+      --border: rgba(20, 40, 90, 0.12);
+      --shadow: 0 10px 30px rgba(20, 40, 90, 0.08);
+      --wave-low: 42, 91, 215;
+      --wave-mid: 11, 143, 179;
+      --wave-high: 107, 79, 209;
+      --wave-alpha: 0.55;
+    }
+
+    /* =======================================================
+       3. BASE STYLES
+       ======================================================= */
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      font-size: 17px;
+      line-height: 1.65;
+      color: var(--text);
+      background: var(--bg);
+      transition: background-color 0.4s ease, color 0.4s ease;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--accent-2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Visible focus ring for keyboard users (accessibility) */
+    :focus-visible {
+      outline: 2px solid var(--accent-2);
+      outline-offset: 3px;
+      border-radius: 4px;
+    }
+
+    /* "Skip to content" link, shown only on keyboard focus */
+    .skip-link {
+      position: absolute;
+      left: -999px;
+      top: 8px;
+      background: var(--accent);
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 8px;
+      z-index: 100;
+    }
+    .skip-link:focus { left: 8px; }
+
+    .container {
+      width: 100%;
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* =======================================================
+       4. BACKGROUND CANVAS (electromagnetic waves + photons)
+       ======================================================= */
+    #field {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none; /* clicks pass through to the page */
+    }
+
+    /* Soft dark overlay so text always stays readable on top of the waves */
+    .veil {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse at 50% 0%, transparent 0%, var(--bg) 85%);
+      opacity: 0.55;
+    }
+
+    /* All page content sits above the canvas */
+    header, main, footer { position: relative; z-index: 1; }
+
+    /* =======================================================
+       5. HEADER AND NAVIGATION
+       ======================================================= */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--bg-glass);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+
+    .logo {
+      font-family: var(--font-mono);
+      font-weight: 500;
+      color: var(--text);
+      letter-spacing: 0.02em;
+    }
+    .logo span { color: var(--accent-2); }
+    .logo:hover { text-decoration: none; }
+
+    .nav-links {
+      display: flex;
+      gap: 28px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .nav-links a {
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+    .nav-actions { display: flex; align-items: center; gap: 8px; }
+
+    /* Round icon buttons (theme toggle, mobile menu) */
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .icon-btn:hover { border-color: var(--accent); transform: rotate(12deg); }
+    .icon-btn svg { width: 18px; height: 18px; }
+
+    /* Show the sun in dark mode and the moon in light mode */
+    .icon-moon { display: none; }
+    [data-theme="light"] .icon-sun { display: none; }
+    [data-theme="light"] .icon-moon { display: block; }
+
+    .menu-btn { display: none; }
+
+    /* =======================================================
+       6. HERO (opening section)
+       ======================================================= */
+    .hero {
+      min-height: calc(100vh - 64px);
+      display: flex;
+      align-items: center;
+      padding: 60px 0;
+    }
+
+    /* Small monospace labels, like figure captions in a lab report */
+    .label {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent-2);
+    }
+
+    .hero h1 {
+      font-size: clamp(2.6rem, 7vw, 4.6rem);
+      font-weight: 700;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      margin: 14px 0 18px;
+    }
+    .hero h1 .grad {
+      background: linear-gradient(100deg, var(--accent) 0%, var(--accent-2) 55%, var(--accent-3) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .hero .tagline {
+      font-size: clamp(1.05rem, 2.2vw, 1.3rem);
+      color: var(--text-muted);
+      max-width: 34ch;
+      margin: 0 0 34px;
+    }
+
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 22px;
+      border-radius: 999px;
+      font-weight: 500;
+      font-size: 0.95rem;
+      border: 1px solid var(--border);
+      color: var(--text);
+      transition: transform 0.2s, border-color 0.2s, background-color 0.2s;
+    }
+    .btn:hover { text-decoration: none; transform: translateY(-2px); border-color: var(--accent); }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn-primary:hover { background: transparent; color: var(--text); }
+
+    /* Live "measurement" readout in the corner of the hero */
+    .readout {
+      margin-top: 48px;
+      display: inline-grid;
+      grid-template-columns: auto auto;
+      gap: 4px 18px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg-glass);
+    }
+    .readout b { color: var(--accent-2); font-weight: 500; }
+    .meter {
+      width: 110px;
+      height: 6px;
+      align-self: center;
+      border-radius: 3px;
+      background: var(--border);
+      overflow: hidden;
+    }
+    .meter i {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transition: width 0.15s linear;
+    }
+    .hint { grid-column: 1 / -1; opacity: 0.75; margin-top: 4px; }
+
+    /* =======================================================
+       7. SECTIONS (shared layout)
+       ======================================================= */
+    section { padding: 110px 0; }
+
+    .section-head { margin-bottom: 44px; }
+    .section-head h2 {
+      font-size: clamp(1.8rem, 4vw, 2.5rem);
+      letter-spacing: -0.02em;
+      margin: 8px 0 0;
+    }
+
+    .card {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    /* ---------- About ---------- */
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 40px;
+      align-items: start;
+    }
+    .about-text p { margin: 0 0 16px; color: var(--text-muted); font-size: 1.08rem; }
+    .about-text p strong { color: var(--text); font-weight: 500; }
+
+    .facts { padding: 22px 24px; list-style: none; margin: 0; }
+    .facts li {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 10px 0;
+      border-bottom: 1px dashed var(--border);
+      font-size: 0.95rem;
+    }
+    .facts li:last-child { border-bottom: none; }
+    .facts .k { font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .facts .v { text-align: right; }
+    .facts .award { color: var(--accent-warm); }
+
+    /* ---------- Interests ---------- */
+    .interest-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px;
+    }
+    .interest {
+      padding: 26px 24px;
+      transition: transform 0.25s, border-color 0.25s;
+    }
+    .interest:hover { transform: translateY(-4px); border-color: var(--accent); }
+    .interest svg { width: 34px; height: 34px; color: var(--accent-2); margin-bottom: 14px; }
+    .interest h3 { margin: 0 0 6px; font-size: 1.1rem; }
+    .interest p { margin: 0; color: var(--text-muted); font-size: 0.95rem; line-height: 1.55; }
+
+    /* ---------- Projects ---------- */
+    .project {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      overflow: hidden;
+    }
+    .project-media {
+      background: #000;
+      display: flex;
+      align-items: center;
+    }
+    .project-media video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .project-body { padding: 32px; }
+    .project-body h3 { margin: 8px 0 12px; font-size: 1.5rem; letter-spacing: -0.01em; }
+    .project-body p { color: var(--text-muted); margin: 0 0 18px; }
+
+    .tags { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 0 0 24px; }
+    .tags li {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--accent-2);
+    }
+
+    .project-small {
+      margin-top: 18px;
+      padding: 22px 26px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .project-small h3 { margin: 0 0 4px; font-size: 1.1rem; }
+    .project-small p { margin: 0; color: var(--text-muted); font-size: 0.95rem; }
+
+    /* ---------- Contact ---------- */
+    .contact-box { padding: 44px 36px; text-align: center; }
+    .contact-box p { color: var(--text-muted); margin: 0 auto 28px; max-width: 46ch; }
+    .contact-links { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; }
+    .contact-links svg { width: 18px; height: 18px; }
+
+    /* =======================================================
+       8. FOOTER
+       ======================================================= */
+    .site-footer {
+      padding: 32px 0 40px;
+      border-top: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .site-footer .container { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+
+    /* =======================================================
+       9. SCROLL ANIMATION (fade in when a block enters the screen)
+       ======================================================= */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    }
+    .reveal.visible { opacity: 1; transform: none; }
+
+    /* Respect users who turned off animations in their OS settings */
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .reveal { opacity: 1; transform: none; transition: none; }
+    }
+
+    /* =======================================================
+       10. RESPONSIVE (tablets and phones)
+       ======================================================= */
+    @media (max-width: 820px) {
+      .about-grid,
+      .project { grid-template-columns: 1fr; }
+      section { padding: 80px 0; }
+    }
+
+    @media (max-width: 680px) {
+      body { font-size: 16px; }
+      .menu-btn { display: grid; }
+
+      /* Mobile menu: a panel that drops down under the header */
+      .nav-links {
+        position: absolute;
+        top: 64px;
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        gap: 0;
+        background: var(--bg-elev);
+        border-bottom: 1px solid var(--border);
+        display: none;
+      }
+      .nav-links.open { display: flex; }
+      .nav-links a { display: block; padding: 16px 24px; font-size: 1rem; }
+
+      .project-body { padding: 24px; }
+      .contact-box { padding: 32px 22px; }
+    }
+  </style>
+</head>
+
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <!-- Background animation layers (decorative, hidden from screen readers) -->
+  <canvas id="field" aria-hidden="true"></canvas>
+  <div class="veil" aria-hidden="true"></div>
+
+  <!-- =========================================================
+       HEADER: logo, navigation links, theme toggle
+       ========================================================= -->
+  <header class="site-header">
+    <nav class="nav container" aria-label="Main navigation">
+      <a href="#top" class="logo">hananya<span>.rem</span></a>
+
+      <ul class="nav-links" id="nav-links">
+        <li><a href="#about">About</a></li>
+        <li><a href="#interests">Interests</a></li>
+        <li><a href="#projects">Projects</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+
+      <div class="nav-actions">
+        <!-- Dark / light mode button -->
+        <button class="icon-btn" id="theme-toggle" type="button" aria-label="Switch to light mode">
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        </button>
+        <!-- Mobile menu button (only visible on small screens) -->
+        <button class="icon-btn menu-btn" id="menu-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="nav-links">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main">
+
+    <!-- =======================================================
+         HERO: name and one-line intro
+         ======================================================= -->
+    <section class="hero" id="top" aria-label="Introduction">
+      <div class="container">
+        <p class="label">Electrical Engineering · Technion</p>
+        <h1>Hello, I'm <span class="grad">Hananya Rem</span></h1>
+        <p class="tagline">Third-year Electrical Engineering student at the Technion.</p>
+
+        <div class="hero-actions">
+          <a href="#projects" class="btn btn-primary">View projects</a>
+          <a href="#contact" class="btn">Get in touch</a>
+        </div>
+
+        <!-- Live readout of the background field under the cursor -->
+        <div class="readout" aria-hidden="true">
+          <span>|E|² at cursor</span><span class="meter"><i id="meter-fill"></i></span>
+          <span>photons</span><b id="photon-count">0</b>
+          <span class="hint" id="hint">move the cursor or click to emit a pulse</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- =======================================================
+         ABOUT
+         ======================================================= -->
+    <section id="about">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="label">01 / About</p>
+          <h2>About me</h2>
+        </div>
+
+        <div class="about-grid">
+          <div class="about-text reveal">
+            <p>I'm a <strong>third-year Electrical Engineering student</strong> at the Technion – Israel Institute of Technology.</p>
+            <p>I chose engineering out of curiosity about mathematics, physics, and how computers and advanced technology actually work.</p>
+            <p>I enjoy problems that take real effort to crack.</p>
+          </div>
+
+          <ul class="facts card reveal">
+            <li><span class="k">Studying</span><span class="v">B.Sc. Electrical Engineering</span></li>
+            <li><span class="k">Where</span><span class="v">Technion, Haifa</span></li>
+            <li><span class="k">Year</span><span class="v">3rd</span></li>
+            <li><span class="k">Award</span><span class="v award">President's Excellence Award</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- =======================================================
+         INTERESTS (add or remove a card by copying an <article>)
+         ======================================================= -->
+    <section id="interests">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="label">02 / Interests</p>
+          <h2>What I'm curious about</h2>
+        </div>
+
+        <div class="interest-grid">
+          <article class="interest card reveal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M2 12c2-6 4-6 6 0s4 6 6 0 4-6 6 0"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg>
+            <h3>Physics</h3>
+            <p>Waves, fields and light, and the laws behind every circuit.</p>
+          </article>
+
+          <article class="interest card reveal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="5" cy="6" r="2"/><circle cx="5" cy="18" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><path d="M7 6.8l3.2 4M7 17.2l3.2-4M14 12h3"/></svg>
+            <h3>Artificial Intelligence</h3>
+            <p>How machines learn, and what real understanding would take.</p>
+          </article>
+
+          <article class="interest card reveal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="6" r="1.5"/><circle cx="18" cy="7" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="7" cy="18" r="1.5"/><circle cx="17" cy="17" r="1.5"/><path d="M7.2 7l3.6 3.8M16.8 8l-3.6 3M11 13.2l-3 3.6M13.2 13l2.6 2.8"/></svg>
+            <h3>Complex Systems</h3>
+            <p>How simple rules give rise to rich collective behavior.</p>
+          </article>
+
+          <article class="interest card reveal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M9 3a6 6 0 0 0-3 11.2V17h7v-2.8A6 6 0 0 0 9 3z"/><path d="M6 20h7M15 8h6M15 12h4M15 16h6"/></svg>
+            <h3>Philosophy of Mind</h3>
+            <p>What consciousness is, and where it could come from.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- =======================================================
+         PROJECTS
+         The video file "snake-demo.mp4" must sit in the same
+         folder as this index.html.
+         ======================================================= -->
+    <section id="projects">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="label">03 / Projects</p>
+          <h2>Selected work</h2>
+        </div>
+
+        <!-- Featured project -->
+        <article class="project card reveal">
+          <div class="project-media">
+            <video src="snake-demo.mp4" autoplay muted loop playsinline controls preload="metadata"
+                   aria-label="Demo video of the Slimming Snake game running on an FPGA with a VGA monitor">
+              Your browser does not support the video tag.
+            </video>
+          </div>
+
+          <div class="project-body">
+            <p class="label">Fig. 1 · Technion EE Lab · Pair project</p>
+            <h3>Slimming Snake on FPGA</h3>
+            <p>The classic Snake game, implemented entirely in hardware using SystemVerilog, with a twist: the snake starts long and the goal is to slim it down. Real-time VGA output, FSM-based game logic and hardware collision detection.</p>
+
+            <ul class="tags" aria-label="Technologies">
+              <li>SystemVerilog</li>
+              <li>FPGA</li>
+              <li>VGA</li>
+              <li>FSM</li>
+              <li>Quartus</li>
+            </ul>
+
+            <a class="btn" href="https://github.com/HananyaRem/slimming-snake-fpga" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.6 22.4c.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A11.5 11.5 0 0 0 12 .5z"/></svg>
+              View code on GitHub
+            </a>
+          </div>
+        </article>
+
+        <!-- Small project card: this website -->
+        <article class="project-small card reveal">
+          <div>
+            <h3>This website</h3>
+            <p>Built with AI-assisted development for a Technion course. One HTML file, hosted on GitHub Pages.</p>
+          </div>
+          <ul class="tags" aria-label="Technologies" style="margin:0">
+            <li>HTML</li>
+            <li>CSS</li>
+            <li>Canvas</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <!-- =======================================================
+         CONTACT
+         Contact links: email, GitHub and LinkedIn
+         ======================================================= -->
+    <section id="contact">
+      <div class="container">
+        <div class="contact-box card reveal">
+          <p class="label">04 / Contact</p>
+          <h2 style="margin:8px 0 12px">Let's talk</h2>
+          <p>Open to student positions, projects and interesting conversations.</p>
+
+          <div class="contact-links">
+            <a class="btn btn-primary" href="mailto:hananyarem@gmail.com">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+              Email
+            </a>
+            <a class="btn" href="https://github.com/HananyaRem" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.6 22.4c.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A11.5 11.5 0 0 0 12 .5z"/></svg>
+              GitHub
+            </a>
+            <a class="btn" href="https://www.linkedin.com/in/hananya-rem-09652a2a2" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9.5h4V21H3zM9.5 9.5h3.8v1.6h.1c.5-1 1.8-2 3.7-2 4 0 4.7 2.6 4.7 6V21h-4v-5.2c0-1.2 0-2.9-1.8-2.9s-2 1.4-2 2.8V21h-4z"/></svg>
+              LinkedIn
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- =========================================================
+       FOOTER
+       ========================================================= -->
+  <footer class="site-footer">
+    <div class="container">
+      <span>© <span id="year">2026</span> Hananya Rem</span>
+      <span>Built with HTML, CSS &amp; JavaScript</span>
+    </div>
+  </footer>
+
+  <script>
+    /* =========================================================
+       A. THEME TOGGLE (dark / light), remembered between visits
+       ========================================================= */
+    const root = document.documentElement;
+    const themeBtn = document.getElementById('theme-toggle');
+
+    function setTheme(theme) {
+      root.setAttribute('data-theme', theme);
+      themeBtn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+      try { localStorage.setItem('theme', theme); } catch (e) { /* storage may be blocked */ }
+      readCanvasColors(); // the background animation picks up the new colors
+    }
+
+    themeBtn.addEventListener('click', () => {
+      setTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
+
+    /* =========================================================
+       B. MOBILE MENU
+       ========================================================= */
+    const menuBtn = document.getElementById('menu-toggle');
+    const navLinks = document.getElementById('nav-links');
+
+    menuBtn.addEventListener('click', () => {
+      const open = navLinks.classList.toggle('open');
+      menuBtn.setAttribute('aria-expanded', open);
+      menuBtn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    });
+    // Close the menu after choosing a link
+    navLinks.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+      navLinks.classList.remove('open');
+      menuBtn.setAttribute('aria-expanded', 'false');
+    }));
+
+    /* =========================================================
+       C. FADE-IN ON SCROLL
+       ========================================================= */
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15 });
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // On touch screens there is no cursor, so adjust the hint text
+    if (window.matchMedia('(pointer: coarse)').matches) {
+      document.getElementById('hint').textContent = 'tap anywhere to emit a pulse';
+    }
+
+    /* =========================================================
+       D. BACKGROUND: ELECTROMAGNETIC WAVES AND PHOTONS
+       - Several sine waves travel across the screen.
+       - Line color shows local field intensity |E|²
+         (blue = low, cyan = medium, white = peak).
+       - The cursor boosts the field around it.
+       - A click sends a circular pulse and a burst of photons.
+       - Photons ride along the waves.
+       ========================================================= */
+    const canvas = document.getElementById('field');
+    const ctx = canvas.getContext('2d');
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    let W = 0, H = 0;
+    let colors = {};                 // filled from the CSS variables
+    const waves = [];                // traveling waves
+    const photons = [];              // photons riding on waves
+    const freePhotons = [];          // photons from a click burst
+    const pulses = [];               // expanding rings from clicks
+    const pointer = { x: -9999, y: -9999 };
+
+    const STEP = 6;                  // horizontal resolution of each wave (px)
+    const BUCKETS = 10;              // intensity levels used for coloring
+    const MAX_PHOTONS = 36;
+
+    // Read the wave colors from the CSS variables (called on theme change)
+    function readCanvasColors() {
+      const css = getComputedStyle(root);
+      const rgb = name => css.getPropertyValue(name).trim().split(',').map(Number);
+      colors = {
+        low: rgb('--wave-low'),
+        mid: rgb('--wave-mid'),
+        high: rgb('--wave-high'),
+        alpha: parseFloat(css.getPropertyValue('--wave-alpha')) || 1
+      };
+      if (reduceMotion) drawFrame(0); // redraw the still image
+    }
+
+    // Blend between two RGB colors
+    const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+
+    // Map intensity (0..1) to an rgba() string
+    function intensityColor(I, alphaScale = 1) {
+      const c = I < 0.5 ? mix(colors.low, colors.mid, I * 2) : mix(colors.mid, colors.high, (I - 0.5) * 2);
+      const a = (0.12 + 0.75 * I) * colors.alpha * alphaScale;
+      return `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)})`;
+    }
+
+    // Create the waves for the current screen size
+    function buildWaves() {
+      waves.length = 0;
+      const count = W < 700 ? 4 : 6;
+      for (let i = 0; i < count; i++) {
+        const lambda = 160 + Math.random() * 260;                 // wavelength in px
+        waves.push({
+          y: H * (0.12 + 0.76 * (i / (count - 1))),               // baseline height
+          k: (2 * Math.PI) / lambda,                              // wave number
+          omega: 0.7 + Math.random() * 0.9,                       // angular frequency
+          amp: 9 + Math.random() * 14,                            // base amplitude
+          phase: Math.random() * Math.PI * 2
+        });
+      }
+    }
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      buildWaves();
+      if (reduceMotion) drawFrame(0);
+    }
+
+    // How much the field is amplified at point (x, y): cursor + click pulses
+    function gainAt(x, y, t) {
+      let g = 1;
+      const dx = x - pointer.x, dy = y - pointer.y;
+      g += 1.8 * Math.exp(-(dx * dx + dy * dy) / (2 * 150 * 150));
+      for (const p of pulses) {
+        const r = (t - p.t0) * 420;                               // ring radius grows at 420 px/s
+        const d = Math.hypot(x - p.x, y - p.y) - r;
+        const fade = Math.max(0, 1 - (t - p.t0) / 2.2);
+        g += 1.6 * fade * Math.exp(-(d * d) / (2 * 40 * 40));
+      }
+      return g;
+    }
+
+    // Field value E of a wave at horizontal position x
+    function fieldAt(w, x, t) {
+      return Math.sin(w.k * x - w.omega * t + w.phase);
+    }
+
+    function spawnPhoton() {
+      const w = waves[Math.floor(Math.random() * waves.length)];
+      photons.push({ w, x: -10, speed: 90 + Math.random() * 110 });
+    }
+
+    function burst(x, y, t) {
+      pulses.push({ x, y, t0: t });
+      for (let i = 0; i < 14; i++) {
+        const a = (i / 14) * Math.PI * 2 + Math.random() * 0.3;
+        const s = 120 + Math.random() * 140;
+        freePhotons.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1 });
+      }
+    }
+
+    function drawPhoton(x, y, I, size) {
+      ctx.fillStyle = intensityColor(Math.min(1, 0.4 + I), 0.25);
+      ctx.beginPath(); ctx.arc(x, y, size * 3.2, 0, Math.PI * 2); ctx.fill();   // glow
+      ctx.fillStyle = intensityColor(Math.min(1, 0.6 + I), 1.4);
+      ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI * 2); ctx.fill();         // core
+    }
+
+    let lastT = 0;
+    function drawFrame(t) {
+      const dt = Math.min(0.05, t - lastT);
+      lastT = t;
+      ctx.clearRect(0, 0, W, H);
+
+      // 1) Waves, grouped into intensity buckets so each color is one path
+      for (const w of waves) {
+        // faint dashed axis under each wave (lab plot feel)
+        ctx.setLineDash([2, 10]);
+        ctx.strokeStyle = intensityColor(0, 0.5);
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(0, w.y); ctx.lineTo(W, w.y); ctx.stroke();
+        ctx.setLineDash([]);
+
+        const paths = Array.from({ length: BUCKETS }, () => new Path2D());
+        let px = 0, py = w.y + w.amp * fieldAt(w, 0, t) * gainAt(0, w.y, t);
+        for (let x = STEP; x <= W + STEP; x += STEP) {
+          const g = gainAt(x, w.y, t);
+          const E = fieldAt(w, x, t);
+          const y = w.y + w.amp * E * g;
+          const I = Math.min(1, (E * E) * (g / 2.8));             // intensity ∝ |E|²
+          const b = Math.min(BUCKETS - 1, Math.floor(I * BUCKETS));
+          paths[b].moveTo(px, py);
+          paths[b].lineTo(x, y);
+          px = x; py = y;
+        }
+        for (let b = 0; b < BUCKETS; b++) {
+          ctx.strokeStyle = intensityColor(b / (BUCKETS - 1));
+          ctx.lineWidth = 1 + b * 0.18;
+          ctx.stroke(paths[b]);
+        }
+      }
+
+      // 2) Photons riding on the waves
+      if (!reduceMotion && photons.length < MAX_PHOTONS && Math.random() < 0.06) spawnPhoton();
+      for (let i = photons.length - 1; i >= 0; i--) {
+        const p = photons[i];
+        p.x += p.speed * dt;
+        if (p.x > W + 20) { photons.splice(i, 1); continue; }
+        const g = gainAt(p.x, p.w.y, t);
+        const E = fieldAt(p.w, p.x, t);
+        drawPhoton(p.x, p.w.y + p.w.amp * E * g, Math.min(1, E * E * g / 2.8), 1.8);
+      }
+
+      // 3) Free photons from click bursts
+      for (let i = freePhotons.length - 1; i >= 0; i--) {
+        const p = freePhotons[i];
+        p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 0.6;
+        if (p.life <= 0) { freePhotons.splice(i, 1); continue; }
+        drawPhoton(p.x, p.y, p.life, 1.6 * p.life + 0.4);
+      }
+
+      // 4) Expanding pulse rings
+      for (let i = pulses.length - 1; i >= 0; i--) {
+        const p = pulses[i];
+        const age = t - p.t0;
+        if (age > 2.2) { pulses.splice(i, 1); continue; }
+        ctx.strokeStyle = intensityColor(0.8, (1 - age / 2.2) * 0.5);
+        ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.arc(p.x, p.y, age * 420, 0, Math.PI * 2); ctx.stroke();
+      }
+
+      updateReadout(t);
+    }
+
+    // Hero readout: field intensity under the cursor and photon count
+    const meterFill = document.getElementById('meter-fill');
+    const photonCount = document.getElementById('photon-count');
+    function updateReadout(t) {
+      let best = 0;
+      for (const w of waves) {
+        const d = Math.abs(pointer.y - w.y);
+        if (d < 60) {
+          const E = fieldAt(w, pointer.x, t);
+          best = Math.max(best, Math.min(1, E * E * gainAt(pointer.x, w.y, t) / 2.8) * (1 - d / 60));
+        }
+      }
+      meterFill.style.width = (best * 100).toFixed(0) + '%';
+      photonCount.textContent = photons.length + freePhotons.length;
+    }
+
+    // Animation loop (paused when the tab is hidden to save battery)
+    function loop(ms) {
+      if (!document.hidden) drawFrame(ms / 1000);
+      requestAnimationFrame(loop);
+    }
+
+    // Pointer events (listen on window: the canvas ignores clicks)
+    window.addEventListener('pointermove', e => { pointer.x = e.clientX; pointer.y = e.clientY; });
+    window.addEventListener('pointerleave', () => { pointer.x = pointer.y = -9999; });
+    window.addEventListener('pointerdown', e => {
+      // do not fire on links and buttons
+      if (!reduceMotion && !e.target.closest('a, button, video')) burst(e.clientX, e.clientY, lastT);
+    });
+    window.addEventListener('resize', resize);
+
+    /* =========================================================
+       E. START
+       ========================================================= */
+    (function init() {
+      let saved = null;
+      try { saved = localStorage.getItem('theme'); } catch (e) {}
+      resize();
+      setTheme(saved === 'light' ? 'light' : 'dark');
+      if (reduceMotion) drawFrame(0);           // one still frame only
+      else requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>
